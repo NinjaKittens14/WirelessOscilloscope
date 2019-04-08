@@ -27,7 +27,7 @@ __interupt void IsrAdc10LedSwitch(void)
     P1OUT ^= 0x03;                 // toggle LED
 
     uint8_t pktLen = 3;
-    uint8_t pkData = {0x02, adcValue.u8[0], adcValue.u8[1]};  // set packets
+    uint8_t pkData = {0x02, adcValue.u8[1], adcValue.u8[0]};  // set packets
     // IDK what order these values should be sent I think as long as we are
     // consistent it should be fine
 

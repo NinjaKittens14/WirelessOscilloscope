@@ -10,10 +10,20 @@
 // 4/8/19
 //------------------------------------------------------------------------------
 
+/*
+ * Clock needs better config (clock for cc2250 and then maybe use it for ADC10 as well)
+ * ADC10 needs better config (continuous sampling, sample hold times)
+ * I think Wireless settings are okay but I havent checked
+ * Also could sample on timer interupt and sync sample with transmit
+ * or could sample constantly and send out packet every sample (if wireless could keep up)
+ */
+
 union {
     uint16_t u16;
     uint8_t[2] u8;
 } adcValue;
+
+#define CHANNEL 0
 
 #pragma vector=ADC10_VECTOR
 __interupt void IsrAdc10LedSwitch(void)
@@ -66,6 +76,7 @@ void Setup()
               |  ADC10DIV_3     // ADC10CLK divider = 4
               |  INCH_0;        // Select input = chnl A0 (default);
 
+    //TODO: Clock needs to have better timing
     // Timer Config
     TACTL   = TASSEL_2 |ID_3 | MC_1;      // TA uses SMCLK/8, in Up mode
     TACCR0  = 60000;                      // ~480 msec @  1/8 MHz
@@ -81,7 +92,7 @@ void Setup()
     TI_CC_PowerupResetCCxxxx();           // Reset cc2500
     writeRFSettings();                    // Put settings to cc2500 config regs
 
-    TI_CC_SPIWriteReg(TI_CCxxx0_CHANNR,  0);  // Set Your Own Channel Number
+    TI_CC_SPIWriteReg(TI_CCxxx0_CHANNR,  CHANNEL);  // Set Your Own Channel Number
                                               // only AFTER writeRFSettings
 
     for(delay=0; delay<650; delay++){};   // Empirical: Let cc2500 finish setup

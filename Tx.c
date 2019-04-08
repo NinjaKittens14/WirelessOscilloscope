@@ -10,6 +10,11 @@
 // 4/8/19
 //------------------------------------------------------------------------------
 
+union {
+    uint16_t u16;
+    uint8_t[2] u8;
+} adcValue;
+
 #pragma vector=ADC10_VECTOR
 __interupt void IsrAdc10LedSwitch(void)
 //------------------------------------------------------------------------------
@@ -18,8 +23,18 @@ __interupt void IsrAdc10LedSwitch(void)
 // Retn:  None
 //------------------------------------------------------------------------------
 {
-    newNadc = ADC10MEM;            // read value of ADC
+    adcValue.u16 = ADC10MEM;            // read value of ADC
+    P1OUT ^= 0x03;                 // toggle LED
 
+    uint8_t pktLen = 3;
+    uint8_t pkData = {0x02, adcValue.u8[0], adcValue.u8[1]};  // set packets
+    // IDK what order these values should be sent I think as long as we are
+    // consistent it should be fine
+
+    RFSendPacket(pktData, pktLen);   // Activate TX mode & transmit packet
+
+    TI_CC_SPIStrobe(TI_CCxxx0_SIDLE); // Set cc2250 to IDLE mode
+                                      // Tx mode re-activates in RFSendPacket
 
     __bic_SR_register_on_exit(LPM0_bits);  // Clr previous Low Pwr bits on stack
 }
@@ -45,11 +60,11 @@ void Setup()
     // ADC Setup
     ADC10AE0  |= 0x01;          // Enable chnl A0 = P2.0;
     ADC10CTL0 |= ADC10ON        // Turn ON ADC10
-                 |  ADC10IE        // enable ADC IRQ
-                 |  ADC10SHT_2;    // samp-hold tim = 16 cyc;
+              |  ADC10IE        // enable ADC IRQ
+              |  ADC10SHT_2;    // samp-hold tim = 16 cyc;
     ADC10CTL1 |= ADC10SSEL_3    // ADC10CLK source = SMCLK
-                 |  ADC10DIV_3     // ADC10CLK divider = 4
-                 |  INCH_0;        // Select input = chnl A0 (default);
+              |  ADC10DIV_3     // ADC10CLK divider = 4
+              |  INCH_0;        // Select input = chnl A0 (default);
 
     // Timer Config
     TACTL   = TASSEL_2 |ID_3 | MC_1;      // TA uses SMCLK/8, in Up mode
@@ -75,13 +90,8 @@ void Setup()
 }
 
 void main ()
-//----------------------------------------------------------------------------
-// Func: Initialize ADC10 and cc2250 wrireless card
-// Args: None
-// Retn: None
-//----------------------------------------------------------------------------
 {
-    WDTCTL  = WDTPW + WDTHOLD;  // Stop Watchdog (Yawn);
+    WDTCTL  = WDTPW + WDTHOLD;  // Stop Watchdog (Yawn)
     Setup();                    // initialize ADC and cc2250
     while(1) {
         ADC10CTL0 |= ENC | ADC10SC;           // Enable Conversion

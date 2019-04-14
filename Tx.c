@@ -25,14 +25,15 @@ union {
 
 #define CHANNEL 0
 
-#pragma vector=ADC10_VECTOR
-__interupt void IsrAdc10LedSwitch(void)
+#pragma vector=TIMERA0_VECTOR
+__interupt void TimerISR(void)
 //------------------------------------------------------------------------------
 // Func:  Read value of ADC and send out to cc2250
 // Args:  None
 // Retn:  None
 //------------------------------------------------------------------------------
 {
+    while(!(ADC10CTL0 & ADC10IFG)){};   // wait for conversion to be ready
     adcValue.u16 = ADC10MEM;            // read value of ADC
     P1OUT ^= 0x03;                 // toggle LED
 
@@ -45,7 +46,7 @@ __interupt void IsrAdc10LedSwitch(void)
 
     TI_CC_SPIStrobe(TI_CCxxx0_SIDLE); // Set cc2250 to IDLE mode
                                       // Tx mode re-activates in RFSendPacket
-
+    ADC10CTL0 &= ~(ADC10IFG);         // clear conversion ready flag
     __bic_SR_register_on_exit(LPM0_bits);  // Clr previous Low Pwr bits on stack
 }
 
@@ -70,7 +71,7 @@ void Setup()
     // ADC Setup
     ADC10AE0  |= 0x01;          // Enable chnl A0 = P2.0;
     ADC10CTL0 |= ADC10ON        // Turn ON ADC10
-              |  ADC10IE        // enable ADC IRQ
+              //|  ADC10IE        // enable ADC IRQ
               |  ADC10SHT_2;    // samp-hold tim = 16 cyc;
     ADC10CTL1 |= ADC10SSEL_3    // ADC10CLK source = SMCLK
               |  ADC10DIV_3     // ADC10CLK divider = 4

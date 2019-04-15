@@ -77,8 +77,10 @@ void Setup()
               //|  ADC10IE        // enable ADC IRQ
               |  ADC10SHT_2;    // samp-hold tim = 16 cyc;
     ADC10CTL1 |= ADC10SSEL_3    // ADC10CLK source = SMCLK
-              |  ADC10DIV_3     // ADC10CLK divider = 4
+              |  ADC10DIV_0     // ADC10CLK divider = 1
               |  INCH_0;        // Select input = chnl A0 (default);
+            //|  CONSEQ_2;      // might want to do repeat single channel
+                                // instead of starting before TimerA interrupt
 
     // Timer Config
     TACTL   = TASSEL_2 | MC_1;      // TA uses SMCLK, in Up mode

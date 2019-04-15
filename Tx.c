@@ -2,6 +2,7 @@
 #include "msp430x22x4.h"
 #include "stdint.h"
 #include "wireless-v2.h"
+#include <stdio.h>
 
 //------------------------------------------------------------------------------
 // Tx.c
@@ -28,7 +29,7 @@ union {
 #pragma vector=TIMERA0_VECTOR
 __interupt void TimerISR(void)
 //------------------------------------------------------------------------------
-// Func:  Read value of ADC and send out to cc2250
+// Func:  Trigger on Timer A Rollover, read value of ADC, and send out to cc2250
 // Args:  None
 // Retn:  None
 //------------------------------------------------------------------------------
@@ -38,15 +39,16 @@ __interupt void TimerISR(void)
     P1OUT ^= 0x01;                 // toggle LED
 
     uint8_t pktLen = 3;
-    uint8_t pkData = {0x02, adcValue.u8[1], adcValue.u8[0]};  // set packets
+    uint8_t pkData = {0x02, adcValue.u8[0], adcValue.u8[1]};  // set packets
     // IDK what order these values should be sent I think as long as we are
     // consistent it should be fine
 
-    RFSendPacket(pktData, pktLen);   // Activate TX mode & transmit packet
-
-    TI_CC_SPIStrobe(TI_CCxxx0_SIDLE); // Set cc2250 to IDLE mode
+    printf("%d", adcValue.u16);    //print value for debug
+    //RFSendPacket(pktData, pktLen);   // Activate TX mode & transmit packet
+    //TI_CC_SPIStrobe(TI_CCxxx0_SIDLE); // Set cc2250 to IDLE mode
                                       // Tx mode re-activates in RFSendPacket
     ADC10CTL0 &= ~(ADC10IFG);         // clear conversion ready flag
+
     __bic_SR_register_on_exit(LPM0_bits);  // Clr previous Low Pwr bits on stack
 }
 
@@ -54,7 +56,8 @@ __interupt void TimerISR(void)
 
 void Setup()
 //-----------------------------------------------------------------------------
-// Func:  Setup MSP430 Ports & Clocks, and reset & config cc2500 chip
+// Func:  Setup MSP430 Ports & Clocks, reset & config cc2500 chip,
+//        Initialize ADC settings
 // Args:  none
 // Retn:  none
 //------------------------------------------------------------------------------
@@ -77,7 +80,6 @@ void Setup()
               |  ADC10DIV_3     // ADC10CLK divider = 4
               |  INCH_0;        // Select input = chnl A0 (default);
 
-    //TODO: Clock needs to have better timing
     // Timer Config
     TACTL   = TASSEL_2 | MC_1;      // TA uses SMCLK, in Up mode
     TACCR0  = 64;                      // ~65us @  1 MHz
@@ -107,7 +109,7 @@ void main ()
     Setup();                    // initialize ADC and cc2250
     while(1) {
         ADC10CTL0 |= ENC | ADC10SC;           // Enable Conversion
-        __bis_SR_register(LPM0_bits + GIE);   // Sleep until interupt from ADC
+        __bis_SR_register(LPM0_bits + GIE);   // Sleep until interupt from Timer
     }
 
 }

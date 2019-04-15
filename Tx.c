@@ -35,7 +35,7 @@ __interupt void TimerISR(void)
 {
     while(!(ADC10CTL0 & ADC10IFG)){};   // wait for conversion to be ready
     adcValue.u16 = ADC10MEM;            // read value of ADC
-    P1OUT ^= 0x03;                 // toggle LED
+    P1OUT ^= 0x01;                 // toggle LED
 
     uint8_t pktLen = 3;
     uint8_t pkData = {0x02, adcValue.u8[1], adcValue.u8[0]};  // set packets
@@ -63,7 +63,7 @@ void Setup()
 
     for(delay=0; delay<650; delay++){};   // Empirical: cc2500 Pwr up settle
 
-    //Crystal Setup
+    // Crystal Setup
     DCOCTL  = CALDCO_8MHZ;      // DCO = 8 MHz;
     BCSCTL1 = CALBC1_8MHZ;      // DCO = 8 MHz;
     BCSCTL2 |= DIVS_3;          // SMCLK = MCLK/8 = 1MHz
@@ -79,8 +79,8 @@ void Setup()
 
     //TODO: Clock needs to have better timing
     // Timer Config
-    TACTL   = TASSEL_2 |ID_3 | MC_1;      // TA uses SMCLK/8, in Up mode
-    TACCR0  = 60000;                      // ~480 msec @  1/8 MHz
+    TACTL   = TASSEL_2 | MC_1;      // TA uses SMCLK, in Up mode
+    TACCR0  = 64;                      // ~65us @  1 MHz
     TACCTL0 = CCIE;		                // enable TA CCR0 IRQ
 
     // LED Port config

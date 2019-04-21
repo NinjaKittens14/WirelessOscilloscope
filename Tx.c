@@ -26,7 +26,7 @@ union {
 
 uint8_t i = 0;
 
-#define CHANNEL 0
+#define CHANNEL 9
 
 #pragma vector=TIMERA1_VECTOR
 __interrupt void TimerISR(void)
@@ -41,29 +41,17 @@ __interrupt void TimerISR(void)
         case TAIV_TAIFG:
             while(ADC10CTL1 & ADC10BUSY){};   // wait for conversion to be ready
             adcValue.u16 = ADC10MEM;            // read value of ADC
-            //P1OUT ^= 0x01;                 // toggle LED
-
-            //uint8_t pktLen = 3;
-            //uint8_t pkData = {0x02, adcValue.u8[0], adcValue.u8[1]};  // set packets
-            // IDK what order these values should be sent I think as long as we are
-            // consistent it should be fine
-
-            //printf("%d", adcValue.u16);    //print value for debug
-            //RFSendPacket(pktData, pktLen);   // Activate TX mode & transmit packet
-            //TI_CC_SPIStrobe(TI_CCxxx0_SIDLE); // Set cc2250 to IDLE mode
-            // Tx mode re-activates in RFSendPacket
+			
             adcValue.u16 == adcValue.u16 << 2; //shift for 12bit DAC
-            while(UCB0STAT & UCBUSY){};       // Wait for SPI Bus to be clear
-            P3OUT &= ~0x01;                   // Assert SS (active low)
 
-            //TODO: Change order if not working
-            UCB0TXBUF = adcValue.u8[1];    // send byte
-            while(!(IFG2 & UCB0TXIFG)){};  // wait for TxBUF to be empty
-            UCB0TXBUF = adcValue.u8[0];    // send byte
-            while(!(IFG2 & UCB0TXIFG)){};  // wait for TxBuf to be empty
-
-            while (UCB0STAT & UCBUSY){};     // wait for quiet bus
-            P3OUT |= 0x01;                   // de-assert SS (active low)
+            uint8_t pktLen = 3;
+            uint8_t pktData[3] = {0x02, adcValue.u8[0], adcValue.u8[1]};  // set packets
+			
+			P1OUT ^= 0x01;					  // Toggle LED
+            RFSendPacket(pktData, pktLen);    // Activate TX mode & transmit packet
+            TI_CC_SPIStrobe(TI_CCxxx0_SIDLE); // Set cc2250 to IDLE mode
+											  // Tx mode re-activates in RFSendPacket
+        
             TACTL &= ~TAIFG;                 // Clear TA flag
             __bic_SR_register_on_exit(LPM0_bits);  // Clr previous Low Pwr bits on stack
             break;
@@ -73,7 +61,6 @@ __interrupt void TimerISR(void)
     }
 
 }
-
 void Setup()
 //-----------------------------------------------------------------------------
 // Func:  Setup MSP430 Ports & Clocks, reset & config cc2500 chip,
@@ -82,59 +69,43 @@ void Setup()
 // Retn:  none
 //------------------------------------------------------------------------------
 {
-    //volatile uint16_t delay;
+    volatile uint16_t delay;
 
-    //for(delay=0; delay<650; delay++){};   // Empirical: cc2500 Pwr up settle
+    for(delay=0; delay<650; delay++){};   // Empirical: cc2500 Pwr up settle
 
     // Crystal Setup
     DCOCTL  = CALDCO_8MHZ;      // DCO = 8 MHz;
     BCSCTL1 = CALBC1_8MHZ;      // DCO = 8 MHz;
     BCSCTL2 |= DIVS_3;          // SMCLK = MCLK/8 = 1MHz
+	
+	// Config built-in LED
+    P1DIR |= 0x01;						// P1.0 = output
+    P1OUT &= ~0x01;						// Set LED as Off
 
     // ADC Setup
     ADC10AE0  |= 0x01;          // Enable chnl A0 = P2.0;
     ADC10CTL0 |= ADC10ON        // Turn ON ADC10
-                 //|  ADC10IE        // enable ADC IRQ
-                 |  ADC10SHT_2;    // samp-hold tim = 16 cyc;
+              |  ADC10SHT_1;    // samp-hold tim = 8 cyc;
     ADC10CTL1 |= ADC10SSEL_3    // ADC10CLK source = SMCLK
-                 |  ADC10DIV_0     // ADC10CLK divider = 1
-                 |  INCH_0;        // Select input = chnl A0 (default);
+              |  ADC10DIV_0     // ADC10CLK divider = 1
+              |  INCH_0;        // Select input = chnl A0 (default);
     //|  CONSEQ_2;      // might want to do repeat single channel
     // instead of starting before TimerA interrupt
 
     // Timer Config
     TACTL   = TASSEL_2 | MC_1 | TAIE;      // TA uses SMCLK, in Up mode
-    TACCR0  = 64;                      // ~65us @  1 MHz
-    //TACCTL0 = CCIE;		                // enable TA CCR0 IRQ
-
-    // LED Port config
-    //P1DIR |=  0x03;                       // Set LED pins to output
-    //P1OUT &= ~0x03;                       // Clear LEDs
+    TACCR0  = 64;                      	   // ~65us @  1 MHz
 
     // Wireless Initialization
-    //P2SEL = 0;                            // P2.6, P2.7 = GDO0, GDO2 (GPIO)
-    //TI_CC_SPISetup();                     // Init SPI port for cc2500
-    //TI_CC_PowerupResetCCxxxx();           // Reset cc2500
-    //writeRFSettings();                    // Put settings to cc2500 config regs
+    P2SEL = 0;                            // P2.6, P2.7 = GDO0, GDO2 (GPIO)
+    TI_CC_SPISetup();                     // Init SPI port for cc2500
+    TI_CC_PowerupResetCCxxxx();           // Reset cc2500
+    writeRFSettings();                    // Put settings to cc2500 config regs
 
-    //TI_CC_SPIWriteReg(TI_CCxxx0_CHANNR,  CHANNEL);  // Set Your Own Channel Number
-    // only AFTER writeRFSettings
+    TI_CC_SPIWriteReg(TI_CCxxx0_CHANNR,  CHANNEL);  // Set Your Own Channel Number
+													// only AFTER writeRFSettings
 
-    //for(delay=0; delay<650; delay++){};   // Empirical: Let cc2500 finish setup
-
-    //P1OUT = 0x02;                         // Setup done => Turn on green LED
-
-    //SPI
-    P3SEL = 0x0A;                         // P3.1 & P3.3 alt modes (MOSI & SCLK)
-    P3DIR = 0x0A;                         // P3.1 & P3.3 output dir
-
-    P3SEL &= ~0x01;                       // P3.0 GPIO (SS)
-    P3DIR |= 0x01;                        // P3.0 Output dir
-    P3OUT |= 0x01;                        // clear SS (active low)
-
-    UCB0CTL0 |= UCSYNC | UCMST | UCMSB;   // synchronous, 3-pin Master, MSB first
-    UCB0CTL1 |= UCSSEL_2;        // SCLK source = SMCLK (1MHz)
-    UCB0CTL1 &= ~UCSWRST;
+    for(delay=0; delay<650; delay++){};   // Empirical: Let cc2500 finish setup
 }
 
 void main ()

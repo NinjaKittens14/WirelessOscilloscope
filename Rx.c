@@ -55,7 +55,7 @@ __interrupt void PktRxedISR(void)
     UCB0TXBUF = adcValue.u8[1];    // send byte
     while(!(IFG2 & UCB0TXIFG)){};  // wait for TxBUF to be empty
     UCB0TXBUF = adcValue.u8[0];    // send byte
-    //while(!(IFG2 & UCB0TXIFG)){};  // wait for TxBuf to be empty
+    while(!(IFG2 & UCB0TXIFG)){};  // wait for TxBuf to be empty
 
     while (UCB0STAT & UCBUSY){};     // wait for quiet bus
     P4OUT |= 0x20;                   // de-assert SS (active low)

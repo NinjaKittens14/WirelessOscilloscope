@@ -42,7 +42,7 @@ __interrupt void TimerISR(void)
             while(ADC10CTL1 & ADC10BUSY){};   // wait for conversion to be ready
             adcValue.u16 = ADC10MEM;            // read value of ADC
 			
-            adcValue.u16 == adcValue.u16 << 2; //shift for 12bit DAC
+            adcValue.u16 = adcValue.u16 << 2; //shift for 12bit DAC
 
             uint8_t pktLen = 3;
             uint8_t pktData[3] = {0x02, adcValue.u8[0], adcValue.u8[1]};  // set packets

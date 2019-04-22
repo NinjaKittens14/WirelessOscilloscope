@@ -29,7 +29,7 @@ __interrupt void PktRxedISR(void)
 
     static uint8_t len = 2;          // Packet Len = 3 bytes (data only)
     uint8_t status[2];               // Buffer to store pkt status bytes
-    uint8_t rxPkt[len];
+    uint8_t rxPkt[2];
 
     if(TI_CC_GDO0_PxIFG & TI_CC_GDO0_PIN)            // chk GDO0 bit of P2 IFG Reg
     {

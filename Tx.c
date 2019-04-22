@@ -45,7 +45,7 @@ __interrupt void TimerISR(void)
             adcValue.u16 == adcValue.u16 << 2; //shift for 12bit DAC
 
             uint8_t pktLen = 3;
-            uint8_t pktData[pktLen] = {0x02, adcValue.u8[0], adcValue.u8[1]};  // set packets
+            uint8_t pktData[3] = {0x02, adcValue.u8[0], adcValue.u8[1]};  // set packets
 			
 			P1OUT ^= 0x01;					  // Toggle LED
             RFSendPacket(pktData, pktLen);    // Activate TX mode & transmit packet

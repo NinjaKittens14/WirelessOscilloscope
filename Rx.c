@@ -38,6 +38,8 @@ __interrupt void PktRxedISR(void)
     }
     TI_CC_GDO0_PxIFG &= ~TI_CC_GDO0_PIN;             // Reset GDO0 IRQ flag
 
+    // I don't think we need to Idle here, we only need to be Rx'ing
+    // but it apparently calibrates when coming out of idle
     TI_CC_SPIStrobe(TI_CCxxx0_SIDLE);      // Set cc2500 to idle mode.
     TI_CC_SPIStrobe(TI_CCxxx0_SRX);        // Set cc2500 to RX mode.
                                            // AutoCal @ IDLE to RX Transition
@@ -53,7 +55,7 @@ __interrupt void PktRxedISR(void)
     UCB0TXBUF = adcValue.u8[1];    // send byte
     while(!(IFG2 & UCB0TXIFG)){};  // wait for TxBUF to be empty
     UCB0TXBUF = adcValue.u8[0];    // send byte
-    while(!(IFG2 & UCB0TXIFG)){};  // wait for TxBuf to be empty
+    //while(!(IFG2 & UCB0TXIFG)){};  // wait for TxBuf to be empty
 
     while (UCB0STAT & UCBUSY){};     // wait for quiet bus
     P4OUT |= 0x20;                   // de-assert SS (active low)

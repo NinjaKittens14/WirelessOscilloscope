@@ -40,19 +40,19 @@ __interrupt void TimerISR(void)
     {
         case TAIV_TAIFG:
             while(ADC10CTL1 & ADC10BUSY){};   // wait for conversion to be ready
-            adcValue.u16 = ADC10MEM;            // read value of ADC
+            adcValue.u16 = ADC10MEM;          // read value of ADC
             
             adcValue.u16 = adcValue.u16 << 2; //shift for 12bit DAC
 
             uint8_t pktLen = 3;
             uint8_t pktData[3] = {0x02, adcValue.u8[0], adcValue.u8[1]};  // set packets
             
-            P1OUT ^= 0x01;                      // Toggle LED
+            P1OUT ^= 0x01;                    // Toggle LED
             RFSendPacket(pktData, pktLen);    // Activate TX mode & transmit packet
             TI_CC_SPIStrobe(TI_CCxxx0_SIDLE); // Set cc2250 to IDLE mode
                                               // Tx mode re-activates in RFSendPacket
         
-            TACTL &= ~TAIFG;                 // Clear TA flag
+            TACTL &= ~TAIFG;                       // Clear TA flag
             __bic_SR_register_on_exit(LPM0_bits);  // Clr previous Low Pwr bits on stack
             break;
         case TAIV_TACCR1:
@@ -94,14 +94,16 @@ void Setup()
 
     // Timer Config
     TACTL   = TASSEL_2 | MC_1 | TAIE;      // TA uses SMCLK, in Up mode
-    TACCR0  = 64;                             // ~65us @  1 MHz
+    TACCR0  = 64;                          // ~65us @  1 MHz
 
     // Wireless Initialization
     P2SEL = 0;                            // P2.6, P2.7 = GDO0, GDO2 (GPIO)
     TI_CC_SPISetup();                     // Init SPI port for cc2500
     TI_CC_PowerupResetCCxxxx();           // Reset cc2500
     writeRFSettings();                    // Put settings to cc2500 config regs
-	//UCB0BR0 = 0x01;                       // UCLK/1 = SMCLK/1
+	//UCB0CTL1 |= UCSWRST;                  // Disab USCI state mach
+    //UCB0BR0 = 0x01;                       // UCLK/1 = SMCLK/1
+    //UCB0CTL1 &= ~UCSWRST;                 // Enab USCI state mach
 
     TI_CC_SPIWriteReg(TI_CCxxx0_CHANNR,  CHANNEL);  // Set Your Own Channel Number
                                                     // only AFTER writeRFSettings

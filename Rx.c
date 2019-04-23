@@ -7,6 +7,16 @@
 #include "msp430x22x4.h"           // Mammoth MSP430-specific macros & defs
 #include "wireless-v2.h"           // Mammoth cc2500 setup & function defs
 
+<<<<<<< HEAD
+=======
+union {
+    uint16_t u16;
+    uint8_t u8[2];
+} adcValue;
+
+#define CHANNEL 5
+
+>>>>>>> upstream/master
 //------------------------------------------------------------------------------
 // Func:  Packet Received ISR:  triggered by falling edge of GDO0.
 //        Parses pkt & prints entire packet data bytes to the host PC.
@@ -20,6 +30,7 @@ __interrupt void PktRxedISR(void)
   // pkt size byte not incl b/c it is stripped off by RFReceivePacket func.
   // IF address check was enabled, THEN would need 1 more byte for device addr
 
+<<<<<<< HEAD
   static uint8_t len = 3;          // Packet Len = 3 bytes (data only)
   uint8_t status[2];               // Buffer to store pkt status bytes
   uint8_t crcOk = 0;               // Flag that pkt was received w/ good CRC     
@@ -28,15 +39,61 @@ __interrupt void PktRxedISR(void)
   if(TI_CC_GDO0_PxIFG & TI_CC_GDO0_PIN)            // chk GDO0 bit of P2 IFG Reg
   { 
     crcOk = RFReceivePacket(rxPkt, &len, status);  // Get packet from cc2500
+=======
+  static uint8_t len = 2;          // Packet Len = 3 bytes (data only)
+  uint8_t crcOk = 0;               // CRC check value
+  uint8_t status[2];               // Buffer to store pkt status bytes    
+  uint8_t rxPkt[2];
+  
+  if(TI_CC_GDO0_PxIFG & TI_CC_GDO0_PIN)            // chk GDO0 bit of P2 IFG Reg
+  { 
+    crcOk = RFReceivePacket(rxPkt, &len, status);         // Get packet from cc2500
+>>>>>>> upstream/master
   }
   TI_CC_GDO0_PxIFG &= ~TI_CC_GDO0_PIN;             // Reset GDO0 IRQ flag
  
   TI_CC_SPIStrobe(TI_CCxxx0_SIDLE);      // Set cc2500 to idle mode.
   TI_CC_SPIStrobe(TI_CCxxx0_SRX);        // Set cc2500 to RX mode.
                                          // AutoCal @ IDLE to RX Transition
+<<<<<<< HEAD
 
   // <Do stuff with the data received>
 
+=======
+                     
+  if (crcOk)
+  {
+    P1OUT ^= 0x01;               // Toggle LED
+  
+    // SCLK Pin configuration
+    //P3SEL |= 0x01;                         // P3.0 alt modes (SCLK)
+    //P3DIR |= 0x01;                         // P3.0 output dir
+
+    // Parse rxPkt into adcValue
+    adcValue.u8[1] = rxPkt[1];        // MSb
+    adcValue.u8[0] = rxPkt[0];        // LSb
+  
+    // Wait for SPI Bus
+    while(UCB0STAT & UCBUSY){};       // Wait for SPI Bus to be clear
+    P4OUT &= ~0x20;                   // Assert SS (active low)
+
+    UCB0TXBUF = adcValue.u8[1];    // send byte
+    while(!(IFG2 & UCB0TXIFG)){};  // wait for TxBUF to be empty
+    UCB0TXBUF = adcValue.u8[0];    // send byte
+    //while(!(IFG2 & UCB0TXIFG)){};  // wait for TxBuf to be empty
+  
+    while (UCB0STAT & UCBUSY){};     // wait for quiet bus
+    P4OUT |= 0x20;                   // de-assert SS (active low)
+  
+    // UCBSTE pin configuration
+    //P3SEL &= ~0x01;                  // Reset P3.0 to normal mode
+    //P3DIR &= ~0x01;                  // Reset P3.0 to input
+	
+	// RF cc2500 pin CS configuration
+    //TI_CC_CSn_PxOUT |= TI_CC_CSn_PIN;
+    //TI_CC_CSn_PxDIR |= TI_CC_CSn_PIN;                // Clear CSn
+  }
+>>>>>>> upstream/master
 }
 
 //------------------------------------------------------------------------------
@@ -54,6 +111,7 @@ void SetupAll(void)
   BCSCTL1 = CALBC1_8MHZ;                // set DCO = 8MHz
   DCOCTL  = CALDCO_8MHZ;                // set DCO = 8MHz
   BCSCTL2 |= DIVS_3;                    // SMCLK = MCLK/8 = 1MHz
+<<<<<<< HEAD
 
   // Config. GPIO Ports for SPI (NEED TO MAKE SURE THE CORRECT PORTS ARE USED)
   P3SEL  =  0x0A;               // P3.1 & P3.3 = alt modes = SPI SIMO & SCLK 
@@ -69,19 +127,50 @@ void SetupAll(void)
   UCA0CTL1 |=  UCSSEL_2;                // SCLK Source Select
   UCA0BR1   =  0x00;                    // SCLK Divider MSB
   UCA0BR0   =  0x01;                    // SCLK Divider LSB
+=======
+  
+  // Config built-in LED
+  P1DIR |= 0x01;            // P1.0 = output
+  P1OUT &= ~0x01;            // Set LED as Off
+  
+  // Config SMCLK Output to pin P2.1
+  P2SEL |= 0x02;            // P2.1 alt mode (SMCLK Output)
+  P2DIR |= 0x02;            // P2.1 Output dir
+
+  // Config. USCA0 for SPI Master
+  P3SEL |= 0x10;                        // P3.4 alt modes (MOSI)
+  P3DIR |= 0x10;                        // P3.4 output dir
+  // Leave P3.0 alone for UCB RF SPI SS*, use SMCLK output pin P2.1 for UCLK
+
+  P4SEL &= ~0x20;                       // P4.5 GPIO (SS)
+  P4DIR |= 0x20;                        // P4.5 Output dir
+  P4OUT |= 0x20;                        // clear SS (active low)
+
+  UCA0CTL0 |= UCSYNC | UCMST | UCMSB;   // synchronous, 3-pin Master, MSB first
+  UCA0CTL1 |= UCSSEL_2;              // SCLK source = SMCLK (8sMHz)
+  UCA0CTL1 &= ~UCSWRST;
+>>>>>>> upstream/master
   
   // Wireless Initialization
   P2SEL = 0;                            // P2.6, P2.7 = GDO0, GDO2 (GPIO)
   TI_CC_SPISetup();                     // Initialize SPI port
   TI_CC_PowerupResetCCxxxx();           // Reset cc2500
   writeRFSettings();                    // Send RF settings to config regs
+<<<<<<< HEAD
+=======
+  //UCB0BR0 = 0x01;                       // UCLK/1 = SMCLK/1
+>>>>>>> upstream/master
 
   TI_CC_GDO0_PxIES |=  TI_CC_GDO0_PIN;  // IRQ on GDO0 fall. edge (end of pkt)
   TI_CC_GDO0_PxIFG &= ~TI_CC_GDO0_PIN;  // Clear  GDO0 IRQ flag
   TI_CC_GDO0_PxIE  |=  TI_CC_GDO0_PIN;  // Enable GDO0 IRQ 
   TI_CC_SPIStrobe(TI_CCxxx0_SRX);       // Init. cc2500 in RX mode.
   
+<<<<<<< HEAD
   TI_CC_SPIWriteReg(TI_CCxxx0_CHANNR, 0);    // Set Your Own Channel Number
+=======
+  TI_CC_SPIWriteReg(TI_CCxxx0_CHANNR, CHANNEL);    // Set Your Own Channel Number
+>>>>>>> upstream/master
                                              // AFTER writeRFSettings (???)
 
   for(delay=0; delay<650; delay++);     // Empirical: Let cc2500 finish setup
